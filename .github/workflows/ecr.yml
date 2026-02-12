@@ -1,0 +1,104 @@
+name: Build & Deploy Application
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  DB_SECRET_NAME: ${{ secrets.DB_SECRET_NAME }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to AWS ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Backend image
+      - name: Build & Push Backend Image
+        env:
+          ECR_BACKEND_REPO: ${{ secrets.ECR_BACKEND_REPO }}
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::8}
+
+          docker build \
+            -t $ECR_BACKEND_REPO:$IMAGE_TAG \
+            -t $ECR_BACKEND_REPO:latest \
+            ./backend
+
+          docker push $ECR_BACKEND_REPO:$IMAGE_TAG
+          docker push $ECR_BACKEND_REPO:latest
+
+      # Frontend image
+      - name: Build & Push Frontend Image
+        env:
+          ECR_FRONTEND_REPO: ${{ secrets.ECR_FRONTEND_REPO }}
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::8}
+
+          docker build \
+            --build-arg VITE_API_URL="${{ secrets.VITE_API_URL }}" \
+            -t $ECR_FRONTEND_REPO:$IMAGE_TAG \
+            -t $ECR_FRONTEND_REPO:latest \
+            ./frontend
+
+          docker push $ECR_FRONTEND_REPO:$IMAGE_TAG
+          docker push $ECR_FRONTEND_REPO:latest
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Ansible and dependencies
+        run: |
+          pip install ansible boto3 botocore
+          ansible-galaxy collection install community.aws community.docker
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/rps-game-keypair.pem
+          chmod 600 ~/.ssh/rps-game-keypair.pem
+
+      - name: Create SSH wrapper script
+        env:
+          BASTION_HOST: ${{ secrets.BASTION_HOST }}
+        run: |
+          cat > ssh_wrapper.sh << EOF
+          #!/bin/bash
+          ssh -i ~/.ssh/rps-game-keypair.pem -o StrictHostKeyChecking=no -o ProxyCommand="ssh -i ~/.ssh/rps-game-keypair.pem -W %h:%p ubuntu@${BASTION_HOST}" "\$@"
+          EOF
+          chmod +x ssh_wrapper.sh
+
+      - name: Test SSH connection
+        env:
+          BASTION_HOST: ${{ secrets.BASTION_HOST }}
+        run: |
+          echo "Testing bastion connection..."
+          ssh -i ~/.ssh/rps-game-keypair.pem -o StrictHostKeyChecking=no ubuntu@${BASTION_HOST} "echo 'Bastion connection successful'"
+
+      - name: Run Ansible playbook
+        working-directory: ./ansible
+        env:
+          BASTION_HOST: ${{ secrets.BASTION_HOST }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          DB_SECRET_NAME: ${{ secrets.DB_SECRET_NAME }}
+          ECR_BACKEND_REPO: ${{ secrets.ECR_BACKEND_REPO }}
+          ECR_FRONTEND_REPO: ${{ secrets.ECR_FRONTEND_REPO }}
+          ANSIBLE_SSH_EXECUTABLE: ../ssh_wrapper.sh
+        run: ansible-playbook playbooks/site.yml -i inventory/aws_ec2.yml
