@@ -1,4 +1,4 @@
-# Rock Paper Scissors Online - Full Stack Web App
+#  Multi-Container App on EC2 - Rock Paper Scissors Online
 
 A full-stack **Rock Paper Scissors** web application with **React frontend**, **Node.js + Express backend**, and **SQL database**. The project is designed with a **3-tier architecture** and uses modern DevOps tools including **Terraform**, **Ansible**, and **Docker** for infrastructure provisioning, configuration management, and containerization respectively.
 
