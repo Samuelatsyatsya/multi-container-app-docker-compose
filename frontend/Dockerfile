@@ -3,12 +3,6 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Build-time argument for API URL
-ARG VITE_API_URL
-
-# Set as environment variable for Vite build
-ENV VITE_API_URL=${VITE_API_URL}
-
 # Copy package files
 COPY package*.json ./
 
@@ -32,8 +26,8 @@ RUN npm install -g serve
 # Copy built app
 COPY --from=build /app/dist ./dist
 
-# Expose port 80
-EXPOSE 80
+# Expose frontend port
+EXPOSE 5173
 
-# Serve the built app on port 80
-CMD ["serve", "-s", "dist", "-l", "80"]
+# Serve the built app on port 5173
+CMD ["serve", "-s", "dist", "-l", "5173"]

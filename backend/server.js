@@ -1,12 +1,10 @@
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import { testConnection, sequelize } from './src/config/db.js';
 import app from './src/app.js';
 
-// Load environment variables
-dotenv.config();
-
-const PORT = process.env.PORT;
-const HOST = process.env.HOST;
+const PORT = Number(process.env.PORT) || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
+const API_PREFIX = process.env.API_PREFIX || '/api/v1';
 
 async function startServer() {
   try {
@@ -31,7 +29,7 @@ Server is running!
 Environment: ${process.env.NODE_ENV}
 Host: http://${HOST}:${PORT}
 Health: http://${HOST}:${PORT}/health
-API: http://${HOST}:${PORT}${process.env.API_PREFIX || '/api/v1'}
+API: http://${HOST}:${PORT}${API_PREFIX}
 Database: ${process.env.DB_NAME}@${process.env.DB_HOST}:${process.env.DB_PORT}
       `);
     });

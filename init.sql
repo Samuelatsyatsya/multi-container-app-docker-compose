@@ -1,0 +1,2 @@
+-- Optional bootstrap SQL for local MySQL container startup.
+-- Keep this file present so docker-compose volume mount resolves cleanly.

@@ -1,8 +1,9 @@
 import { HTTP_STATUS } from '../config/constants.js';
 
-export const validate = (schema) => {
+export const validate = (schema, source = 'body') => {
   return (req, res, next) => {
-    const { error } = schema.validate(req.body, { abortEarly: false });
+    const payload = req[source] || {};
+    const { error } = schema.validate(payload, { abortEarly: false });
     
     if (error) {
       const errors = error.details.map(detail => ({

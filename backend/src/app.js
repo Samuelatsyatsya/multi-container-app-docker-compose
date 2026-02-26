@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -7,6 +8,16 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { HTTP_STATUS } from './config/constants.js';
 
 const app = express();
+const API_PREFIX = process.env.API_PREFIX || '/api/v1';
+const corsOrigin = process.env.CORS_ORIGIN || '*';
+const corsOptions = {
+  origin: corsOrigin,
+  credentials: corsOrigin !== '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
 
 // Trust proxy (nginx)
 app.set('trust proxy', true);
@@ -15,17 +26,10 @@ app.set('trust proxy', true);
 app.use(helmet());
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',  
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-}));
+app.use(cors(corsOptions));
 
 // Handle preflight requests for all routes
-app.options('*', cors());
+app.options('*', cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -36,7 +40,7 @@ const limiter = rateLimit({
     message: 'Too many requests from this IP, please try again later.'
   }
 });
-app.use('/api/v1', limiter);
+app.use(API_PREFIX, limiter);
 
 // Body parsing middleware
 app.use(express.json());
@@ -53,7 +57,6 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-const API_PREFIX = process.env.API_PREFIX;
 app.use(`${API_PREFIX}/game`, gameRoutes);
 
 // Add API health endpoint

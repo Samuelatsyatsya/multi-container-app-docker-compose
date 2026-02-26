@@ -5,8 +5,7 @@ import { CHOICE_CONFIG, GAME_CHOICES, GAME_RESULTS } from './utils/constants.js'
 import { 
   ArrowPathIcon, 
   UserCircleIcon,
-  ServerStackIcon,
-  InformationCircleIcon 
+  ServerStackIcon
 } from '@heroicons/react/24/outline';
 import { 
   TrophyIcon, 
@@ -24,10 +23,13 @@ function App() {
 
   const { 
     username, 
+    leaderboard,
     playerStats, 
     isLoading, 
     backendStatus, 
+    saveUsername,
     submitGame, 
+    fetchLeaderboard,
     fetchPlayerStats,
     resetLocalStats 
   } = useGame();
@@ -36,7 +38,6 @@ function App() {
     getComputerChoice, 
     determineWinner, 
     getChoiceEmoji,
-    getResultColor,
     getResultMessage 
   } = useGameLogic();
 
@@ -296,7 +297,11 @@ function App() {
 
           {/* Right Column - Leaderboard */}
           <div>
-            <Leaderboard />
+            <Leaderboard
+              leaderboard={leaderboard}
+              fetchLeaderboard={fetchLeaderboard}
+              username={username}
+            />
           </div>
         </div>
       </main>
@@ -306,8 +311,11 @@ function App() {
         isOpen={showUsernameModal}
         onClose={() => setShowUsernameModal(false)}
         onSave={(name) => {
-          setSessionStartTime(Date.now());
-          setShowUsernameModal(false);
+          const saved = saveUsername(name);
+          if (saved) {
+            setSessionStartTime(Date.now());
+          }
+          return saved;
         }}
       />
 

@@ -1,17 +1,13 @@
 import { useState } from 'react';
-import { useGame } from '../hooks/useGame.js';
-import toast from 'react-hot-toast';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export const UsernameModal = ({ isOpen, onClose, onSave }) => {
   const [input, setInput] = useState('');
-  const { saveUsername } = useGame();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const saved = saveUsername(input);
+    const saved = onSave(input);
     if (saved) {
-      onSave(input);
       setInput('');
       onClose();
     }

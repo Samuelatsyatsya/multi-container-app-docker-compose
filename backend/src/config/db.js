@@ -1,20 +1,34 @@
+import 'dotenv/config';
 import { Sequelize } from 'sequelize';
 import AWS from 'aws-sdk';
 
-// Configure AWS SDK region
-AWS.config.update({ region: process.env.AWS_REGION });
+const sequelizeOptions = {
+  dialect: 'mysql',
+  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  pool: {
+    max: 10,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  },
+  define: {
+    timestamps: true,
+    underscored: true,
+    freezeTableName: true
+  }
+};
 
-const secretsManager = new AWS.SecretsManager();
-
-// Function to get DB credentials from Secrets Manager
 async function getDbCredentials(secretName) {
+  AWS.config.update({ region: process.env.AWS_REGION || 'us-east-1' });
+  const secretsManager = new AWS.SecretsManager();
+
   try {
     const data = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
-    
+
     if ('SecretString' in data) {
       return JSON.parse(data.SecretString);
     }
-    
+
     throw new Error('Secret has no string value');
   } catch (error) {
     console.error('Error fetching database credentials:', error.message);
@@ -22,50 +36,57 @@ async function getDbCredentials(secretName) {
   }
 }
 
-// Initialize Sequelize
-async function initializeSequelize() {
-  const secretName = process.env.DB_SECRET_NAME;
-  
-  if (!secretName) {
-    throw new Error('DB_SECRET_NAME environment variable is not set');
+function buildSequelizeFromEnv() {
+  const requiredVars = ['DB_HOST', 'DB_USER', 'DB_NAME'];
+  const missingVars = requiredVars.filter((key) => !process.env[key]);
+
+  if (missingVars.length > 0) {
+    throw new Error(`Missing required database env vars: ${missingVars.join(', ')}`);
   }
 
+  return new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASSWORD || '',
+    {
+      ...sequelizeOptions,
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT) || 3306
+    }
+  );
+}
+
+async function buildSequelizeFromSecret(secretName) {
   const creds = await getDbCredentials(secretName);
 
-  const sequelize = new Sequelize(
+  return new Sequelize(
     creds.dbname,
     creds.username,
     creds.password,
     {
+      ...sequelizeOptions,
       host: creds.host,
-      port: creds.port,
-      dialect: 'mysql',
-      logging: process.env.NODE_ENV === 'development' ? console.log : false,
-      pool: {
-        max: 10,
-        min: 0,
-        acquire: 30000,
-        idle: 10000
-      },
-      define: {
-        timestamps: true,
-        underscored: true,
-        freezeTableName: true
-      }
+      port: Number(creds.port) || 3306
     }
   );
+}
+
+async function initializeSequelize() {
+  const secretName = process.env.DB_SECRET_NAME;
+  const sequelizeInstance = secretName
+    ? await buildSequelizeFromSecret(secretName)
+    : buildSequelizeFromEnv();
 
   try {
-    await sequelize.authenticate();
+    await sequelizeInstance.authenticate();
     console.log('Database connection established successfully.');
-    return sequelize;
+    return sequelizeInstance;
   } catch (error) {
     console.error('Unable to connect to the database:', error.message);
     throw error;
   }
 }
 
-// Create the sequelize instance
 const sequelize = await initializeSequelize();
 
 // Test connection function (what server.js needs)

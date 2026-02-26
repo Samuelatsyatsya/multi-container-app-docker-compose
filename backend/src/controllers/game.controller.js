@@ -1,5 +1,6 @@
 import { GameService } from '../services/game.service.js';
-import { GAME_CHOICES, GAME_RESULTS, HTTP_STATUS } from '../config/constants.js';
+import { User, GameSession } from '../models/index.js';
+import { HTTP_STATUS } from '../config/constants.js';
 
 export class GameController {
   static async submitGameResult(req, res, next) {

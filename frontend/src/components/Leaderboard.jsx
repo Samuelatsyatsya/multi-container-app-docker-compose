@@ -1,10 +1,7 @@
 import { useEffect } from 'react';
-import { useGame } from '../hooks/useGame.js';
 import { TrophyIcon, FireIcon, ChartBarIcon } from '@heroicons/react/24/solid';
 
-export const Leaderboard = () => {
-  const { leaderboard, fetchLeaderboard, username } = useGame();
-
+export const Leaderboard = ({ leaderboard, fetchLeaderboard, username }) => {
   useEffect(() => {
     fetchLeaderboard();
     const interval = setInterval(fetchLeaderboard, 30000); // Refresh every 30 seconds
