@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:25.7-current-alpine3.22
 WORKDIR /app
 
 # Install dependencies first (for caching)

@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine AS build
+FROM node:25.7-current-alpine3.22
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ COPY . .
 RUN npm run build
 
 # Production stage - serve static files with a simple HTTP server
-FROM node:18-alpine
+FROM node:25.7-current-alpine3.22
 
 WORKDIR /app
 
